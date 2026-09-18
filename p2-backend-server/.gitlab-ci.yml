@@ -1,0 +1,24 @@
+---
+image: dokku/ci-docker-image
+
+stages:
+  - deploy
+
+variables:
+  GIT_DEPTH: 0
+
+deploy:
+  stage: deploy
+  only:
+    - main
+  variables:
+    BRANCH: main
+    GIT_REMOTE_URL: ssh://dokku@dokku.informatik.uni-bremen.de:22/comai-p2
+  before_script:
+    - echo "$SSH_PRIVATE_KEY_BASE64" | base64 -d > /root/.ssh/id_rsa
+    - chmod 600 /root/.ssh/id_rsa
+    - dokku-unlock || true
+  script:
+    - dokku-deploy
+  after_script:
+    - dokku-unlock || true

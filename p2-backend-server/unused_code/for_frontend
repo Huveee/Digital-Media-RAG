@@ -1,0 +1,32 @@
+// This is what i got in combination with the backend verifivation, on what the fronted has to do
+
+// browser-side: use SubtleCrypto (Web Crypto API)
+async function hmacHex(key, msg) {
+  const enc = new TextEncoder();
+  const keyData = enc.encode(key);
+  const cryptoKey = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, enc.encode(msg));
+  // convert to hex
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function sendRequest(path, payload) {
+  const secret = "sdfu398fb2kj30fnslsndfo29jfnr4bbihslp093u4b5892nladx2snvoqo"; // embedded in frontend build
+  const ts = Math.floor(Date.now() / 1000).toString();
+  const method = "POST";
+  const message = `${method}|${new URL(path).pathname}|${ts}`;
+  const signature = await hmacHex(secret, message);
+
+  const res = await fetch(path, {
+    method: method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Frontend-Key": secret,
+      "X-Frontend-Timestamp": ts,
+      "X-Frontend-Signature": signature
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return res;
+}

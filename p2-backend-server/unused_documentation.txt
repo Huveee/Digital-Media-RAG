@@ -1,0 +1,124 @@
+# 🔒 Security & Authentication
+
+This application implements **JWT-based authentication** to ensure that only verified users can access protected routes, such as the `/chat/llm` endpoint.
+
+---
+
+## 🧠 How It Works
+
+1. **User Login**
+   - User create an account via the `/auth` endpoint choosing a username and a password.
+   - Users authenticate via the `/auth/token` endpoint using a valid username and password.  
+   - Upon successful verification, the server generates a **JSON Web Token (JWT)** signed with a secret key.  
+   - The token includes the user’s identity (`sub`) and an expiration timestamp (`exp`).
+
+2. **Token Storage**
+   - The client (frontend or API consumer) stores the JWT securely — typically in local storage or an HTTP-only cookie.
+
+3. **Authenticated Requests**
+   - When the client calls a protected endpoint (for example, `/chat/llm`), it must include the token in the HTTP header:
+     ```http
+     Authorization: Bearer <your_token_here>
+     ```
+   - FastAPI’s dependency system automatically validates the token before running the route handler.
+
+4. **Token Verification**
+   - The `get_current_user()` dependency decodes the JWT using the same secret key.  
+   - If the token is valid and not expired, the corresponding user is retrieved from the database and injected into the route.  
+   - If verification fails (invalid, missing, or expired token), the server returns:
+     ```json
+     {
+       "detail": "Authentication failed"
+     }
+     ```
+
+5. **Secure Routes**
+   - Any route that includes the following dependency requires authentication:
+     ```python
+     current_user: User = Depends(get_current_user)
+     ```
+   - Example:
+     ```python
+     @app.post("/chat/llm")
+     def chatllm(request: ChatRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+         ...
+     ```
+
+## 🔐 Security
+
+- Passwords are **never stored in plain text** — they are hashed using **Argon2**, a strong, modern hashing algorithm.  
+- JWT tokens are **signed** with a strong secret key and include an **expiration time**.  (20 min)
+- Protected endpoints validate the JWT on **every request**.  
+- The server should run under **HTTPS** in production to ensure encrypted communication.  
+- Token validation errors automatically return HTTP **401 Unauthorized** responses.  
+
+---
+
+🔁 Example Authentication Flow Diagram (It looks nicer in VS Code :( )
+
+|┌────────────┐        ┌──────────────────┐        ┌──────────────┐
+|│   Client   │  --->  │  /auth/token     │  --->  │   JWT Token  │
+|└────────────┘        └──────────────────┘        └──────┬───────┘
+|                                                         │
+|                                                         ▼
+|                                                  ┌────────────────┐
+|                                                  │  /chat/llm     │
+|                                                  │  (Protected)   │
+|                                                  └────────────────┘
+|                                                         │
+|                                            Authorization: Bearer <token>
+|                                                         │
+|                                                         ▼
+|                                              Token Verified → Access Granted
+
+
+
+
+
+### How to use the Backend:
+* After opening the given Linkadress (most likely: http://127.0.0.1:8000) add /docs to it (http://127.0.0.1:8000/docs) to open the SwaggerUI
+* Open a Route of a Chatbot and click on the top right "Try it out"
+* There are values:
+`
+{
+  "chat_id": 0,
+  "messages": [
+    {
+      "role": "user",
+      "content": "string"
+    }
+  ],
+  "stream": true,
+  "model": "varllm"
+}
+`
+* chat_id = The ID for the ChatHistory (can't be 0!)
+* messenges = The users prompt/question
+* stream: The response as a stream
+* model: The used model for the response (llm, rag, varllm)
+* Now change the chat_id to the current used chat
+* Then change from content "string" to real values and potentially the model
+* Example:
+`
+{
+  "chat_id": 1,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Tell me something about the planet earth"
+    }
+  ],
+  "stream": true,
+  "model": "varllm"
+}
+`
+* Note: The RAG Bot is trained on Data of fb3 and fb11 of University Bremen. So questions in regarts to that are more useful.
+
+* Then click "Execute" and the response shows up if scrolled down a bit (in the Response Body)
+
+
+
+
+Login for testing:
+username: erik
+password: test1234!
